@@ -469,20 +469,50 @@ docker start node-exporter
 
 Vérifier le retour à l'état UP.
 
+**Réponse :**
+
+- Après `docker stop node-exporter`, la target node-exporter passe en DOWN dans Prometheus. L'erreur indique que le nom node-exporter n'est plus trouvé sur le réseau Docker.
+- La métrique `up` passe à 0 pour node-exporter, alors que prometheus reste à 1.
+- Dans Grafana, le panneau Services Availability affiche 0 pour node-exporter pendant l'arrêt, et les graphiques basés sur node-exporter n'ont plus de nouvelles données.
+- Après `docker start node-exporter`, la target repasse en UP (`up = 1`) et les graphiques se remplissent de nouveau.
+
 ## 12. Questions de compréhension
 
-1. Quelle est la différence entre Prometheus et Grafana ?
-2. Quel est le rôle de Node Exporter ?
-3. Que signifie le terme scraping ?
-4. À quoi sert le fichier `prometheus.yml` ?
-5. Pourquoi Grafana utilise-t-il l'adresse `prometheus:9090` ?
-6. À quoi sert PromQL ?
-7. Pourquoi utilise-t-on des volumes Docker ?
-8. Que se passe-t-il lorsqu'une target passe à l'état DOWN ?
-9. Pourquoi est-il important de surveiller les ressources CPU, RAM et disque ?
-10. Expliquer la différence entre les états UP et DOWN.
-11. Pourquoi utilise-t-on la fonction `rate()` pour calculer l'utilisation CPU ?
-12. Pourquoi exclut-on généralement l'interface `lo` ?
+**1. Quelle est la différence entre Prometheus et Grafana ?**
+Prometheus récupère et stocke les métriques. Grafana sert à les afficher sous forme de graphiques en se connectant à Prometheus.
+
+**2. Quel est le rôle de Node Exporter ?**
+Il récupère les métriques de la machine Linux (CPU, mémoire, disque, réseau) et les met à disposition sur le port 9100 pour que Prometheus puisse les lire.
+
+**3. Que signifie le terme scraping ?**
+C'est quand Prometheus va chercher lui-même les métriques des services, en faisant une requête HTTP à intervalle régulier (toutes les 15 secondes ici).
+
+**4. À quoi sert le fichier prometheus.yml ?**
+C'est le fichier de configuration de Prometheus. Il indique la fréquence de collecte et la liste des services à superviser (les targets).
+
+**5. Pourquoi Grafana utilise-t-il l'adresse prometheus:9090 ?**
+Grafana et Prometheus sont dans des conteneurs différents sur le même réseau Docker, où on s'appelle par le nom du service. Avec localhost, Grafana chercherait Prometheus dans son propre conteneur et ne le trouverait pas.
+
+**6. À quoi sert PromQL ?**
+C'est le langage pour interroger les métriques de Prometheus : choisir une métrique, filtrer avec des labels et faire des calculs dessus.
+
+**7. Pourquoi utilise-t-on des volumes Docker ?**
+Pour garder les données quand un conteneur est supprimé ou recréé. Sans volume, on perdrait les métriques de Prometheus et les dashboards de Grafana.
+
+**8. Que se passe-t-il lorsqu'une target passe à l'état DOWN ?**
+Prometheus n'arrive plus à récupérer ses métriques. La valeur de up passe à 0, il n'y a plus de nouvelles données et la target affiche une erreur dans la page Targets.
+
+**9. Pourquoi est-il important de surveiller les ressources CPU, RAM et disque ?**
+Pour voir qu'une machine est surchargée ou qu'il manque de la place avant que ça provoque une panne, et pour retrouver l'origine d'un problème.
+
+**10. Expliquer la différence entre les états UP et DOWN.**
+UP veut dire que Prometheus récupère bien les métriques du service (up = 1). DOWN veut dire que la récupération échoue (up = 0).
+
+**11. Pourquoi utilise-t-on la fonction rate() pour calculer l'utilisation CPU ?**
+Parce que node_cpu_seconds_total est un compteur qui ne fait qu'augmenter. rate() donne l'évolution par seconde sur une période, ce qui permet d'obtenir le pourcentage d'utilisation.
+
+**12. Pourquoi exclut-on généralement l'interface lo ?**
+lo est l'interface locale de la machine, elle ne représente pas du trafic réel vers l'extérieur et fausserait les chiffres du trafic réseau.
 
 ## 13. Commandes utiles
 
